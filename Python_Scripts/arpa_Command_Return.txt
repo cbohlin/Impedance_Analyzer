@@ -1,0 +1,4 @@
+arp -a
+K-E4990A-02575.hsd1.wa.comcast.net (10.1.10.102) at 00:21:79:11:c2:8c [ether] on wlp3s0
+
+sudo etherwake -i wlp3s0 00:21:79:11:c2:8c

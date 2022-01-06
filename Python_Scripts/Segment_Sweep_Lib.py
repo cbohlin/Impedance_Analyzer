@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Jan  6 10:37:18 2022
+Created on Thu Jan  6 11:57:28 2022
 
 @author: otonexus
 """
@@ -10,7 +10,6 @@ import matplotlib.pyplot as pyplot
 import numpy as np
 import pyvisa
 import scipy.io as scio
-import pandas as pd
 
 def Query2List(Q):
     delim = Q.strip()
@@ -41,7 +40,8 @@ def read_segment_data(I):
     
     
     segm_list = Query2List(I.query(':SENS1:SEGM:DATA?'))
-
+    
+    print(segm_list[0:9])
     
     #Each parameter in the above array data is detailed below:
     #<buf>: Always specify 7.
@@ -57,7 +57,7 @@ def read_segment_data(I):
     elif stim_mode == 1:
         cols = ['Center','Span','Points']
     
-    # <list OSC level on/off>: ON/OFF of the list OSC level of each segment
+    # <list OSC level on/off>: ON/OFF of the list OSC level fo each segment
     # 0: OFF, 1: ON
     list_OSC = segm_list[2]
     
@@ -105,60 +105,19 @@ def read_segment_data(I):
     # <segm>: Number of segments. Specify an integer ranging 1 to 201.
     num_segs = segm_list[8]
     
+   
+    
     
     row_len = int(num_segs)
     col_len = int(len(cols))
     
     segm_data = np.zeros([row_len,col_len])
-    index = 9
-    
-    for r in range(row_len):
-        for c in range(col_len):
-            segm_data[r,c] = segm_list[index]
-            index += 1
-    
-    #print(segm_data)
+    print(segm_data)
     
     # print(f'Row:{row_len} Col:{col_len}')
     # print(cols)
     # print(segm_list)
+
     
-    table = pd.DataFrame(segm_data,
-                      columns=cols)
     
-    return table
-
-# Open PYVISA to Impedance Analyzer
-rm = pyvisa.ResourceManager()
-
-ip_address = '10.1.10.102'
-
-resource_name = f'TCPIP::{ip_address}::INSTR'
-
-
-inst = rm.open_resource(resource_name)
-
-
-inst.write('*CLS')
-
-try:
-#===============
-# Run Commands Here
-#--------------------------------------------------------------
-
-
-    # print(inst.query(':SENS1:SEGM:SWE:POIN?'))
-    
-    # :SENSe<Ch>:SEGMent:DATA?
-
-    Tab = read_segment_data(inst)
-    print(Tab)
-
-
-#--------------------------------------------------------------
-except:
-    print('Error')
-
-finally:
-    inst.close()
-    rm.close()
+    return segm_list
