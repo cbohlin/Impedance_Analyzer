@@ -37,7 +37,8 @@ inst = rm.open_resource(resource_name)
 
 idn = inst.query('*IDN?').strip()
 opt = inst.query('*OPT?').strip()
-    
+
+
 inst.write('*CLS')
 
 
@@ -49,14 +50,18 @@ inst.write(':TRIG:SOUR BUS')
 inst.write(':CALC1:PAR1:DEF R')
 inst.write(':CALC1:PAR2:DEF X')
 
+inst.write(':SENS1:APER:TIME 1')
+
 
 
 ## Get X/Freq Data
 query = functools.partial(inst.query_ascii_values, separator=',',
                           container=numpy.array)
 
-number_of_points = 401#configure_sweep_parameters(inst, cfg)
+number_of_points = 101#configure_sweep_parameters(inst, cfg)
 
+inst.write(f':SENS1:SWE:POIN {number_of_points}')
+inst.write(':SENS1:SWE:TIME 0')
 x = query(':SENS1:FREQ:DATA?')    
 
 # Config Voltage
@@ -72,6 +77,8 @@ bias_voltage = 37;
 inst.write(':SOUR1:BIAS:MODE VOLT')
 inst.write(f':SOUR1:BIAS:VOLT {bias_voltage}')
 inst.write(':SOUR:BIAS:STAT ON')
+
+ST = time.perf_counter()
 
 inst.write(':SENS1:DC:MEAS:ENAB ON')
 
@@ -97,18 +104,33 @@ acq_start_time = time.perf_counter()
 inst.write(':TRIG:SING')
 inst.query('*OPC?')
 acq_end_time = (time.perf_counter() - acq_start_time) * 1e3
+
+MSPP = acq_end_time/number_of_points
+
 print(f"Acquisition time is {acq_end_time:.0f} ms")
+print(f"For: {number_of_points:.0f} points")
+print(f"That is: {MSPP:.2f} ms/point")
 
 inst.write(':DISP:WIND1:TRAC1:Y:AUTO')
 inst.write(':DISP:WIND1:TRAC2:Y:AUTO')
 
 # Execute marker search
 inst.write(':CALC1:MARK1:FUNC:EXEC')
+inst.write(':SOUR:BIAS:STAT OFF')
+
 
 y = query(':CALC1:DATA:RDAT?')
-yx[:,1] = y[::2]
-yr[:,1] = y[1::2]
+yx[:,0] = y[::2]
+yr[:,0] = y[1::2]
+
+ET = time.perf_counter()
 
 
 inst.close()
 rm.close()
+
+
+
+print(f"Total Time With Overhead: {(ET-ST):.2f} s")
+
+
