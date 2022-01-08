@@ -18,19 +18,19 @@ connectingVal = 0
 
 def connect_impedance_analyzer():
     
-    try:
-        I = e4990a_Impedance_Analyzer(ipEntry.get())
-        
-        connectPanelState = 'disabled'
-        controlPanelState = 'normal'
-        
-        connectionIndicator.configure(bg='green')
-        
-        connectButton.config(state=connectPanelState)
-        ipEntry.config(state='readonly')
-        print('Connected!')
-    except:
-        print('Error')
+    
+    I = e4990a_Impedance_Analyzer(ipEntry.get())
+    
+    connectPanelState = 'disabled'
+    controlPanelState = 'normal'
+    
+    connectionIndicator.configure(bg='green')
+    
+    connectButton.config(state=connectPanelState)
+    ipEntry.config(state='readonly')
+    print('Connected')
+    
+
     
     
 

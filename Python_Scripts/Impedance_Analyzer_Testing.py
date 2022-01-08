@@ -34,12 +34,22 @@ resource_name = f'TCPIP::{ip_address}::INSTR'
 
 inst = rm.open_resource(resource_name)
 
+# Timeout must be longer than sweep interval.
+inst.timeout = 30000
+
 
 idn = inst.query('*IDN?').strip()
 opt = inst.query('*OPT?').strip()
 
 
 inst.write('*CLS')
+
+# Stop display from updating to speed up measure
+#:DISPlay:ENABle {ON|OFF|1|0}
+inst.write(':DISP:ENAB OFF')
+
+# Linear Display spacing (Freq Base [Lin]  v Order Base[log])
+inst.write(':DISP:WIND1:X:SPAC LIN')
 
 
 fixture = inst.query(':SENS:FIXT:SEL?').strip()
@@ -76,11 +86,12 @@ inst.write(f':SOUR1:VOLT {volt}')
 bias_voltage = 37;
 inst.write(':SOUR1:BIAS:MODE VOLT')
 inst.write(f':SOUR1:BIAS:VOLT {bias_voltage}')
-inst.write(':SOUR:BIAS:STAT ON')
 
-ST = time.perf_counter()
 
 inst.write(':SENS1:DC:MEAS:ENAB ON')
+
+ST = time.perf_counter()
+inst.write(':SOUR:BIAS:STAT ON')
 
 number_of_intervals = 1
 bias_current_measurement = numpy.zeros((1, number_of_intervals),
@@ -97,6 +108,7 @@ ydims = number_of_points, number_of_intervals
 yx = numpy.zeros(ydims, dtype=numpy.float32)
 yr = numpy.zeros(ydims, dtype=numpy.float32)
  
+
 
 inst.write(':SENS1:DC:MEAS:CLE')
 
@@ -124,7 +136,7 @@ yx[:,0] = y[::2]
 yr[:,0] = y[1::2]
 
 ET = time.perf_counter()
-
+inst.write(':DISP:ENAB ON')
 
 inst.close()
 rm.close()
