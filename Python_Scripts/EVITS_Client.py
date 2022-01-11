@@ -45,7 +45,7 @@ class Client:
         self._server_address = (ip, 10000)
 
     def connect(self):
-        self._socket = socket.create_connection(self._server_address)
+        self._socket = socket.create_connection(self._server_address,timeout=(3))
         print('Connected to {} port {}'.format(*self._server_address))
         
     def start(self):

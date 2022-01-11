@@ -100,7 +100,6 @@ if __name__ == '__main__':
     ipEntry = Entry(connectPanel,width=30,textvariable=ipDefault,state=connectPanelState)
     ipEntry.grid(row=0,column=0,padx=5,pady=5)
     
-    connectMessage = '  Connecting to:  '+ipEntry.get()+' . . .   may take 30s to 1 min'
     
     
     connectButton = Button(connectPanel, text="Connect",command= lambda:connect_impedance_analyzer(C),state=connectPanelState)
