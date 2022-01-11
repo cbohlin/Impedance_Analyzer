@@ -109,21 +109,21 @@ if __name__ == '__main__':
     connectionIndicator = Canvas(connectPanel, bg='#ffbdc6', height=20, width=20)
     connectionIndicator.grid(row=0,column=2,padx=10)
     
-    connectSpacer = Label(connectPanel,text="",font=('Helvetica', '10'),anchor=W,width=53)
-    connectSpacer.grid(row=1,column=0)
+    connectSpacer = Label(connectPanel,text="",font=('Helvetica', '10'),anchor=W,width=75)
+    connectSpacer.grid(row=1,column=0,columnspan=3)
     
     #==============================================================================
     # Control Panel
     #==============================================================================
     
     controlPanel = LabelFrame(root,text='Controls')
-    controlPanel.grid(row=2,column=1,sticky=NW,padx=5)
+    controlPanel.grid(row=1,column=1,rowspan=2,sticky=NW,padx=5)
     
     sweepButton = Button(controlPanel, text="Sweep",command=__sweep,state=controlPanelState)
-    sweepButton.grid(row=0,column=0)
+    sweepButton.grid(row=0,column=0,sticky=W,padx=5)
     
     
-    controlSpacer = Label(controlPanel,text="",font=('Helvetica', '10'),anchor=W,width=53)
+    controlSpacer = Label(controlPanel,text="",font=('Helvetica', '10'),anchor=W,width=75)
     controlSpacer.grid(row=3,column=0)
     
     
@@ -136,8 +136,8 @@ if __name__ == '__main__':
 
     consoleVar = StringVar(value=consoleList)
 
-    consoleReadout = Listbox(consolePanel,height=25,width=46,listvariable=consoleVar)
-    consoleReadout.grid(row=0,column=0,padx=2,pady=2)
+    consoleReadout = Listbox(consolePanel,height=25,width=50,listvariable=consoleVar)
+    consoleReadout.grid(row=0,column=0)
     
     consoleSpacer = Label(consolePanel,text="",font=('Helvetica', '10'),anchor=W,width=75)
     consoleSpacer.grid(row=1,column=0)
