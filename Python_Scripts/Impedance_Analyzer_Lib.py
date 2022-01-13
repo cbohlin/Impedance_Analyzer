@@ -7,6 +7,8 @@ Created on Thu Jan  6 12:36:09 2022
 
 import pyvisa
 import configparser
+import numbers
+import time
 
 import numpy as np
 
@@ -19,7 +21,7 @@ class e4990a_Impedance_Analyzer:
     
     def __init__(self):
         
-        config_file = 'Evits_Config.ini'
+        config_file = 'EVITS_Config.ini'
         
         self.__update_configuration(self.read_config(config_file))
         
@@ -43,11 +45,14 @@ class e4990a_Impedance_Analyzer:
             inst.timeout = 30000
             
             
-            self.inst = inst  
+            self.inst = inst 
         except:
             #raise E4990AError('No device found')
             self.__printErr('Could not connect. Check that the IP address is correct and try restarting the impedance analyzer.')
     
+    
+        self.configure_e4990a()
+        
     def read_config(self,filename):
         # Load Config
         config = configparser.ConfigParser()
@@ -77,7 +82,7 @@ class e4990a_Impedance_Analyzer:
         config_dict['ip_address'] = config_dict['ip_address']
         config_dict['oscillator_voltage'] = float(config_dict['oscillator_voltage'])
         config_dict['bias_voltage'] = float(config_dict['bias_voltage'])
-        config_dict['segments'] = [int(float(k)) for k in config_dict['segments'].split(',')]
+        config_dict['segments'] = np.array([int(float(k)) for k in config_dict['segments'].split(',')])
         config_dict['measurement_speed'] = int(config_dict['measurement_speed'])
         
         return config_dict        
@@ -85,7 +90,7 @@ class e4990a_Impedance_Analyzer:
     def configure_e4990a(self):
         # Stop display from updating to speed up measure
         #:DISPlay:ENABle {ON|OFF|1|0}
-        self.inst.write(':DISP:ENAB OFF')
+        self.inst.write(':DISP:ENAB ON')
 
         # Linear Display spacing (Freq Base [Lin]  v Order Base[log])
         self.inst.write(':DISP:WIND1:X:SPAC LIN')
@@ -96,6 +101,8 @@ class e4990a_Impedance_Analyzer:
 
         self.inst.write(':INIT1:CONT ON')
         
+
+        
         # Trigger source set to bus (Python PYVISA)
         self.inst.write(':TRIG:SOUR BUS')
         
@@ -103,7 +110,7 @@ class e4990a_Impedance_Analyzer:
         self.inst.write(':CALC1:PAR1:DEF R')
         self.inst.write(':CALC1:PAR2:DEF X')
 
-        self.inst.write(':SENS1:APER:TIME 1')
+        self.inst.write(f':SENS1:APER:TIME {self.measure_speed}')
         
         
         # Config Voltage
@@ -121,12 +128,40 @@ class e4990a_Impedance_Analyzer:
         self.inst.write(':SENS1:DC:MEAS:ENAB ON')
         
         # Frequency Range
-        #-----------------------------------
+        #-----------------------------------       
+        
+        self.inst.write(':SENS1:SWE:TYPE SEGM')
+        self.inst.write(f':SENS1:SEGM:DATA 7,0,0,0,0,0,0,0,'
+                   f'{self.number_of_segments},{self.str_seg}')
+        
+        self.inst.write(f':SENS1:SWE:POIN {self.number_of_points}')     
+        self.inst.write('*CLS')
         
      
     def run_sweep(self):
-        pass
-        
+        self.inst.write(':DISP:ENAB OFF')
+        self.inst.write(':SENS1:DC:MEAS:CLE')
+        self.inst.write(':SOUR:BIAS:STAT ON')
+        acq_start_time = time.perf_counter()
+        self.inst.write(':TRIG:SING')
+        self.inst.query('*OPC?')
+        acq_end_time = (time.perf_counter() - acq_start_time) * 1e3
+
+        MSPP = acq_end_time/self.number_of_points
+
+        print(f"Acquisition time is {acq_end_time:.0f} ms")
+        print(f"For: {self.number_of_points:.0f} points")
+        print(f"That is: {MSPP:.2f} ms/point")
+
+        self.inst.write(':DISP:WIND1:TRAC1:Y:AUTO')
+        self.inst.write(':DISP:WIND1:TRAC2:Y:AUTO')
+
+        # Execute marker search
+        self.inst.write(':CALC1:MARK1:FUNC:EXEC')
+        self.inst.write(':SOUR:BIAS:STAT OFF')
+        self.inst.write(':DISP:ENAB ON')
+
+    
      
     def __printErr(self,msg):
         print()
@@ -140,12 +175,18 @@ class e4990a_Impedance_Analyzer:
         
         self.osc_voltage = config_dict['oscillator_voltage']
         self.bias_voltage = config_dict['bias_voltage']
-        self.segments = config_dict['segments']
         self.measure_speed = config_dict['measurement_speed']
+        
+        self.segments = config_dict['segments']
+        self.str_seg = ",".join(np.char.mod('%f', self.segments))
+        self.number_of_segments = self.segments.size // 3
+        self.number_of_points = np.sum(self.segments[2::3])
+
         
         
 if __name__ == '__main__':
     I  = e4990a_Impedance_Analyzer()
-    A = I.segments
+    I.run_sweep()
+    
         
         
