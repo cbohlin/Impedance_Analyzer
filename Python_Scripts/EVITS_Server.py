@@ -114,6 +114,8 @@ class RequestHandler(socketserver.BaseRequestHandler):
 class TCPServer(socketserver.TCPServer):
 
     def __init__(self, host_port_tuple, streamhandler):
+        
+        
         super().__init__(host_port_tuple, streamhandler)
         print("Starting EVITS on {} port {}".format(*host_port_tuple))
         print("Waiting for connection...")

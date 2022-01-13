@@ -27,7 +27,7 @@ import scipy.io as scio
 # Open PYVISA to Impedance Analyzer
 rm = pyvisa.ResourceManager()
 
-ip_address = '10.1.10.102'
+ip_address = '10.1.10.103'
 
 resource_name = f'TCPIP::{ip_address}::INSTR'
 
@@ -35,7 +35,7 @@ resource_name = f'TCPIP::{ip_address}::INSTR'
 inst = rm.open_resource(resource_name)
 
 # Timeout must be longer than sweep interval.
-inst.timeout = 30000
+inst.timeout = 30000000
 
 
 idn = inst.query('*IDN?').strip()
@@ -68,7 +68,7 @@ inst.write(':SENS1:APER:TIME 1')
 query = functools.partial(inst.query_ascii_values, separator=',',
                           container=numpy.array)
 
-number_of_points = 101#configure_sweep_parameters(inst, cfg)
+number_of_points = 401#configure_sweep_parameters(inst, cfg)
 
 inst.write(f':SENS1:SWE:POIN {number_of_points}')
 inst.write(':SENS1:SWE:TIME 0')
@@ -77,15 +77,15 @@ x = query(':SENS1:FREQ:DATA?')
 # Config Voltage
 #----------------------------------
 
-# OSC
-volt = 0.5;
-inst.write(':SOUR1:MODE VOLT')
-inst.write(f':SOUR1:VOLT {volt}')
+# # OSC
+# volt = 0.5;
+# inst.write(':SOUR1:MODE VOLT')
+# inst.write(f':SOUR1:VOLT {volt}')
 
-#BIAS
-bias_voltage = 37;
-inst.write(':SOUR1:BIAS:MODE VOLT')
-inst.write(f':SOUR1:BIAS:VOLT {bias_voltage}')
+# #BIAS
+# bias_voltage = 37;
+# inst.write(':SOUR1:BIAS:MODE VOLT')
+# inst.write(f':SOUR1:BIAS:VOLT {bias_voltage}')
 
 
 inst.write(':SENS1:DC:MEAS:ENAB ON')
@@ -100,8 +100,8 @@ bias_voltage_measurement = numpy.zeros((1, number_of_intervals),
                                        dtype=numpy.float32)
 
 # Show marker at peak of trace
-inst.write(':CALC1:MARK1 ON')
-inst.write(':CALC1:MARK1:FUNC:TYPE PEAK')
+# inst.write(':CALC1:MARK1 ON')
+# inst.write(':CALC1:MARK1:FUNC:TYPE PEAK')
 
 # Data Containers
 ydims = number_of_points, number_of_intervals
@@ -135,6 +135,10 @@ y = query(':CALC1:DATA:RDAT?')
 yx[:,0] = y[::2]
 yr[:,0] = y[1::2]
 
+F = x
+R = yr
+X = yx
+
 ET = time.perf_counter()
 inst.write(':DISP:ENAB ON')
 
@@ -144,5 +148,11 @@ rm.close()
 
 
 print(f"Total Time With Overhead: {(ET-ST):.2f} s")
+
+arscio.savemat('54A3_Shorted_Spec.mat', {
+    'F':F,
+    'R':R,
+    'X':X
+})
 
 

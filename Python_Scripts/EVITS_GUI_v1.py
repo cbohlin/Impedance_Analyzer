@@ -6,9 +6,10 @@ Created on Thu Jan  6 12:20:57 2022
 @author: otonexus
 """
 
+import time
 
-from tkinter import *
-from tkinter.ttk import *
+import tkinter as tk
+import tkinter.ttk as ttk
 
 from EVITS_Client import Client
 
@@ -29,12 +30,13 @@ if __name__ == '__main__':
     connectingVal = 0
     consoleList = ['------------------------','Welcome to the EVITS','------------------------','']
      
-    def __sweep():
-        pass
+    def __measure(client):
+        console_message('----')
+        console_message('Starting Measure')
+        client.start()
+        console_message('Measure Complete')
     
     def connect_impedance_analyzer(client):
-        
-        
         # I = e4990a_Impedance_Analyzer(ipEntry.get())
         
         try:
@@ -51,7 +53,7 @@ if __name__ == '__main__':
             connectButton.config(state=connectPanelState)
             ipEntry.config(state='readonly')
             
-            sweepButton.config(state=controlPanelState)
+            measureButton.config(state=controlPanelState)
             
             console_message(f'Connected to EVITS on: {ipEntry.get()}')
         except:
@@ -61,6 +63,10 @@ if __name__ == '__main__':
     def console_message(msg):
         consoleList.append(f'{msg}')
         consoleVar.set(value=consoleList)
+        root.update_idletasks()
+        root.update()
+        
+        
     def __valid_ip(ip):
         try:
             L = len(ip.split("."))
@@ -74,17 +80,17 @@ if __name__ == '__main__':
         
     
     
-    root = Tk()
+    root = tk.Tk()
     root.title('EVITS v1')
     root.geometry('1400x800+100+50')
     
-    headerFrame = LabelFrame(root)
-    headerFrame.grid(row=0,column=0,sticky=NW,padx=5)
+    headerFrame = ttk.LabelFrame(root)
+    headerFrame.grid(row=0,column=0,sticky=tk.NW,padx=5)
     
-    headerSpacer = Label(headerFrame,text="",font=('Helvetica', '10'),anchor=W,width=75)
+    headerSpacer = ttk.Label(headerFrame,text="",font=('Helvetica', '10'),anchor=tk.W,width=75)
     headerSpacer.grid(row=1,column=0)
     
-    headerTitle = Label(headerFrame,text="EVITS: Control Interface",font=('Helvetica', '20'),anchor=W,width=35)
+    headerTitle = ttk.Label(headerFrame,text="EVITS: Control Interface",font=('Helvetica', '20'),anchor=tk.W,width=35)
     headerTitle.grid(row=0,column=0)
     
     
@@ -92,53 +98,53 @@ if __name__ == '__main__':
     # Connect Panel
     #==============================================================================
     
-    connectPanel = LabelFrame(root,text='Connection')
-    connectPanel.grid(row=1,column=0,sticky=NW,padx=5)
+    connectPanel = ttk.LabelFrame(root,text='Connection')
+    connectPanel.grid(row=1,column=0,sticky=tk.NW,padx=5)
     
-    ipDefault = StringVar(value=IP_DEFAULT) 
+    ipDefault = tk.StringVar(value=IP_DEFAULT) 
         
-    ipEntry = Entry(connectPanel,width=30,textvariable=ipDefault,state=connectPanelState)
+    ipEntry = ttk.Entry(connectPanel,width=30,textvariable=ipDefault,state=connectPanelState)
     ipEntry.grid(row=0,column=0,padx=5,pady=5)
     
     
     
-    connectButton = Button(connectPanel, text="Connect",command= lambda:connect_impedance_analyzer(C),state=connectPanelState)
+    connectButton = ttk.Button(connectPanel, text="Connect",command=lambda:connect_impedance_analyzer(C),state=connectPanelState)
     connectButton.grid(row=0,column=1)
     
-    connectionIndicator = Canvas(connectPanel, bg='#ffbdc6', height=20, width=20)
+    connectionIndicator = tk.Canvas(connectPanel, bg='#ffbdc6', height=20, width=20)
     connectionIndicator.grid(row=0,column=2,padx=10)
     
-    connectSpacer = Label(connectPanel,text="",font=('Helvetica', '10'),anchor=W,width=75)
+    connectSpacer = ttk.Label(connectPanel,text="",font=('Helvetica', '10'),anchor=tk.W,width=75)
     connectSpacer.grid(row=1,column=0,columnspan=3)
     
     #==============================================================================
     # Control Panel
     #==============================================================================
     
-    controlPanel = LabelFrame(root,text='Controls')
-    controlPanel.grid(row=1,column=1,rowspan=2,sticky=NW,padx=5)
+    controlPanel = ttk.LabelFrame(root,text='Controls')
+    controlPanel.grid(row=1,column=1,rowspan=2,sticky=tk.NW,padx=5)
     
-    sweepButton = Button(controlPanel, text="Sweep",command=__sweep,state=controlPanelState)
-    sweepButton.grid(row=0,column=0,sticky=W,padx=5)
+    measureButton = ttk.Button(controlPanel, text="Measure", command=lambda:__measure(C),state=controlPanelState)
+    measureButton.grid(row=0,column=0,sticky=tk.W,padx=5)
     
     
-    controlSpacer = Label(controlPanel,text="",font=('Helvetica', '10'),anchor=W,width=75)
+    controlSpacer = ttk.Label(controlPanel,text="",font=('Helvetica', '10'),anchor=tk.W,width=75)
     controlSpacer.grid(row=3,column=0)
     
     
     #==============================================================================
     # Console
     #==============================================================================
-    consolePanel = LabelFrame(root,text='Console')
-    consolePanel.grid(row=2,column=0,sticky=NW,padx=5)
+    consolePanel = ttk.LabelFrame(root,text='Console')
+    consolePanel.grid(row=2,column=0,sticky=tk.NW,padx=5)
 
 
-    consoleVar = StringVar(value=consoleList)
+    consoleVar = tk.StringVar(value=consoleList)
 
-    consoleReadout = Listbox(consolePanel,height=25,width=50,listvariable=consoleVar)
+    consoleReadout = tk.Listbox(consolePanel,height=25,width=50,listvariable=consoleVar)
     consoleReadout.grid(row=0,column=0)
     
-    consoleSpacer = Label(consolePanel,text="",font=('Helvetica', '10'),anchor=W,width=75)
+    consoleSpacer = ttk.Label(consolePanel,text="",font=('Helvetica', '10'),anchor=tk.W,width=75)
     consoleSpacer.grid(row=1,column=0)
     
     
