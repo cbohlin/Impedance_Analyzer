@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jan  4 09:50:11 2022
+Created on Thu Jan 13 16:08:53 2022
 
-@author: charlesbohlin
+@author: otonexus
 """
 
 import argparse
@@ -23,6 +23,61 @@ import matplotlib.pyplot as pyplot
 import numpy
 import pyvisa
 import scipy.io as scio
+
+def pass_sweep():
+    pass
+
+def internal_sweep():
+    ST = time.perf_counter()
+    # Open PYVISA to Impedance Analyzer
+    rm = pyvisa.ResourceManager()
+
+    ip_address = '10.1.10.103'
+
+    resource_name = f'TCPIP::{ip_address}::INSTR'
+
+
+    inst = rm.open_resource(resource_name)
+
+    # Timeout must be longer than sweep interval.
+    inst.timeout = 30000000
+
+
+    idn = inst.query('*IDN?').strip()
+    opt = inst.query('*OPT?').strip()
+
+
+    inst.write('*CLS')
+    
+    
+    inst.write(':SENS1:DC:MEAS:CLE')
+
+
+    acq_start_time = time.perf_counter()
+    inst.write(':TRIG:SING')
+    inst.query('*OPC?')
+    acq_end_time = (time.perf_counter() - acq_start_time) * 1e3
+
+    MSPP = acq_end_time/number_of_points
+
+    inst.write(':DISP:WIND1:TRAC1:Y:AUTO')
+    inst.write(':DISP:WIND1:TRAC2:Y:AUTO')
+
+    # Execute marker search
+    inst.write(':CALC1:MARK1:FUNC:EXEC')
+    inst.write(':SOUR:BIAS:STAT OFF')
+
+
+    y = query(':CALC1:DATA:RDAT?')
+    ET = time.perf_counter()
+    
+    print(f"Acquisition time is {acq_end_time:.0f} ms")
+    print(f"For: {number_of_points:.0f} points")
+    print(f"That is: {MSPP:.2f} ms/point")
+    
+    print(f"Total Time With Overhead: {(ET-ST):.2f} s")
+
+
 
 # Open PYVISA to Impedance Analyzer
 rm = pyvisa.ResourceManager()
@@ -90,7 +145,7 @@ x = query(':SENS1:FREQ:DATA?')
 
 inst.write(':SENS1:DC:MEAS:ENAB ON')
 
-ST = time.perf_counter()
+
 inst.write(':SOUR:BIAS:STAT ON')
 
 number_of_intervals = 1
@@ -110,6 +165,7 @@ yr = numpy.zeros(ydims, dtype=numpy.float32)
  
 
 
+ST = time.perf_counter()
 inst.write(':SENS1:DC:MEAS:CLE')
 
 
@@ -136,6 +192,7 @@ inst.write(':SOUR:BIAS:STAT OFF')
 
 
 y = query(':CALC1:DATA:RDAT?')
+ET = time.perf_counter()
 yr[:,0] = y[::2]
 yx[:,0] = y[1::2]
 
@@ -143,20 +200,20 @@ F = x
 R = yr
 X = yx
 
-ET = time.perf_counter()
+
 inst.write(':DISP:ENAB ON')
 
-inst.close()
-rm.close()
 
 
 
 print(f"Total Time With Overhead: {(ET-ST):.2f} s")
 
-# arscio.savemat('54A3_Shorted_Spec.mat', {
-#     'F':F,
-#     'R':R,
-#     'X':X
-# })
+print('-- Next --')
+time.sleep(3)
+internal_sweep()
+
+inst.close()
+rm.close()
+
 
 

@@ -52,6 +52,7 @@ class e4990a_Impedance_Analyzer:
     
     
         self.configure_e4990a()
+        print('---- e4990a Setup')
         
     def read_config(self,filename):
         # Load Config
@@ -139,12 +140,30 @@ class e4990a_Impedance_Analyzer:
         
      
     def run_sweep(self):
-        self.inst.write(':DISP:ENAB OFF')
-        self.inst.write(':SENS1:DC:MEAS:CLE')
-        self.inst.write(':SOUR:BIAS:STAT ON')
+        rm = pyvisa.ResourceManager()
+
+        resource_name = f'TCPIP::{self.ip}::INSTR'
+        inst = rm.open_resource(resource_name)
+        
+        idn = inst.query('*IDN?').strip()
+        opt = inst.query('*OPT?').strip()
+
+        inst.write('*CLS')
+        
+        # Timeout must be longer than sweep interval.
+        inst.timeout = 30000
+    
+
+        
+        
+        inst.write(':DISP:ENAB OFF')
+        inst.write(':SOUR:BIAS:STAT ON')
+        
+        
+        inst.write(':SENS1:DC:MEAS:CLE')
         acq_start_time = time.perf_counter()
-        self.inst.write(':TRIG:SING')
-        self.inst.query('*OPC?')
+        inst.write(':TRIG:SING')
+        inst.query('*OPC?')
         acq_end_time = (time.perf_counter() - acq_start_time) * 1e3
 
         MSPP = acq_end_time/self.number_of_points
@@ -153,14 +172,21 @@ class e4990a_Impedance_Analyzer:
         print(f"For: {self.number_of_points:.0f} points")
         print(f"That is: {MSPP:.2f} ms/point")
 
-        self.inst.write(':DISP:WIND1:TRAC1:Y:AUTO')
-        self.inst.write(':DISP:WIND1:TRAC2:Y:AUTO')
+        inst.write(':DISP:WIND1:TRAC1:Y:AUTO')
+        inst.write(':DISP:WIND1:TRAC2:Y:AUTO')
 
         # Execute marker search
-        self.inst.write(':CALC1:MARK1:FUNC:EXEC')
+        inst.write(':CALC1:MARK1:FUNC:EXEC')
+        inst.write(':SOUR:BIAS:STAT OFF')
+        inst.write(':DISP:ENAB ON')
+        inst.close()
+    
+    
+    def cleanup(self):
         self.inst.write(':SOUR:BIAS:STAT OFF')
         self.inst.write(':DISP:ENAB ON')
-
+        self.inst.close()
+        print('---- e4990a Closed')
     
      
     def __printErr(self,msg):
@@ -186,7 +212,10 @@ class e4990a_Impedance_Analyzer:
         
 if __name__ == '__main__':
     I  = e4990a_Impedance_Analyzer()
+    
+    t1 = time.perf_counter()
     I.run_sweep()
+    print((time.perf_counter() - t1)*1e3)
     
         
         

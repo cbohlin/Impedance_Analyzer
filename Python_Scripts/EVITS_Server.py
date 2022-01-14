@@ -16,8 +16,13 @@ import struct
 import sys
 import time
 import traceback
+import multiprocessing
+import functools
 
 import numpy as np
+import pyvisa
+
+from Impedance_Analyzer_Lib import e4990a_Impedance_Analyzer
 
 BUFSIZE = 4096
 HEADER_FORMAT = '4si'
@@ -121,18 +126,186 @@ class TCPServer(socketserver.TCPServer):
         print("Waiting for connection...")
 
 
-def main():
+
+def server_process():
     server = TCPServer(get_server_address(), RequestHandler)
     server.serve_forever()
 
+def analysis_process():
+    pass
+
+def sweeping_process(child_conn):
+    time.sleep(2)
+    # Open PYVISA to Impedance Analyzer
+    rm = pyvisa.ResourceManager()
+
+    ip_address = '10.1.10.103'
+
+    resource_name = f'TCPIP::{ip_address}::INSTR'
+
+
+    inst = rm.open_resource(resource_name)
+
+    # Timeout must be longer than sweep interval.
+    inst.timeout = 30000000
+
+
+    idn = inst.query('*IDN?').strip()
+    opt = inst.query('*OPT?').strip()
+
+
+    inst.write('*CLS')
+    
+    ## Get X/Freq Data
+    query = functools.partial(inst.query_ascii_values, separator=',',
+                              container=np.array)
+
+    x = query(':SENS1:FREQ:DATA?')    
+
+    # Stop display from updating to speed up measure
+    #:DISPlay:ENABle {ON|OFF|1|0}
+    inst.write(':DISP:ENAB OFF')
+    
+    while True:
+        msg = child_conn.recv()
+        
+        print(msg)
+        
+        if msg == 'MEAS':
+            inst.write(':DISP:ENAB OFF')
+            inst.write(':SENS1:DC:MEAS:ENAB ON')
+        
+            ST = time.perf_counter()
+            inst.write(':SOUR:BIAS:STAT ON')
+        
+            number_of_intervals = 1
+            bias_current_measurement = np.zeros((1, number_of_intervals),
+                                                   dtype=np.float32)
+            bias_voltage_measurement = np.zeros((1, number_of_intervals),
+                                                   dtype=np.float32)
+            number_of_points = 101
+            numer_of_intervals = 1
+            # Show marker at peak of trace
+            # inst.write(':CALC1:MARK1 ON')
+            # inst.write(':CALC1:MARK1:FUNC:TYPE PEAK')
+        
+            # Data Containers
+            ydims = number_of_points, number_of_intervals
+            yx = np.zeros(ydims, dtype=np.float32)
+            yr = np.zeros(ydims, dtype=np.float32)
+             
+        
+        
+            inst.write(':SENS1:DC:MEAS:CLE')
+        
+        
+        
+        
+            acq_start_time = time.perf_counter()
+            inst.write(':TRIG:SING')
+            inst.query('*OPC?')
+            acq_end_time = (time.perf_counter() - acq_start_time) * 1e3
+        
+            MSPP = acq_end_time/number_of_points
+        
+            print(f"Acquisition time is {acq_end_time:.0f} ms")
+            print(f"For: {number_of_points:.0f} points")
+            print(f"That is: {MSPP:.2f} ms/point")
+        
+        
+            inst.write(':DISP:WIND1:TRAC1:Y:AUTO')
+            inst.write(':DISP:WIND1:TRAC2:Y:AUTO')
+        
+            # Execute marker search
+            inst.write(':CALC1:MARK1:FUNC:EXEC')
+            inst.write(':SOUR:BIAS:STAT OFF')
+        
+        
+            y = query(':CALC1:DATA:RDAT?')
+            yr[:,0] = y[::2]
+            yx[:,0] = y[1::2]
+        
+            F = x
+            R = yr
+            X = yx
+        
+            ET = time.perf_counter()
+            inst.write(':DISP:ENAB ON')
+            print(f"Total Time With Overhead: {(ET-ST):.2f} s")
+            
+            child_conn.send('DONE')
+            
+
+    inst.close()
+    rm.close()
+
+
+
+    
+
+def main():
+    P_server = multiprocessing.Process(target=server_process)
+    P_server.start()
+    print('hi')
+    P_server.join()
 
 if __name__ == '__main__':
     try:
-        main()
-    except KeyboardInterrupt:
+        #////////////////////////////////
+        #// Setup Impedance Analyzer
+        #////////////////////////////////
+        I = e4990a_Impedance_Analyzer()
+        
+        
+        measure_Q = multiprocessing.Queue()
+        parent_conn, child_conn = multiprocessing.Pipe()
+        
+        P_server = multiprocessing.Process(target=server_process)
+        P_server.start()
+        
+        P_sweep = multiprocessing.Process(target=sweeping_process, args=(child_conn,))
+        P_sweep.start()
+        
+        t1 = time.perf_counter()
+        time.sleep(4)
+        while True:
+            #print(time.perf_counter() - t1)
+            t1 = time.perf_counter()
+            parent_conn.send('MEAS')
+            while True:
+                msg = parent_conn.recv()
+                if msg == 'DONE':
+                    print(msg)
+                    t2 = time.perf_counter()
+                    print(f' -- {t2-t1} s -- Send/Recv')
+                    break
+            
+
+    except KeyboardInterrupt: 
+        P_sweep.terminate()
+        P_sweep.join()
+        
+        P_server.terminate()
+        P_server.join()
+        
+        
+        I.cleanup()
         sys.exit(0)
     except Exception as e:
+        P_sweep.terminate()
+        P_sweep.join()
+        
+        P_server.terminate()
+        P_server.join()
+        I.cleanup()
         traceback.print_exc()
         sys.exit(1)
     else:
+        P_sweep.terminate()
+        P_sweep.join()
+        
+        P_server.terminate()
+        P_server.join()
+        P_server.join()
+        I.cleanup()
         sys.exit(0)
