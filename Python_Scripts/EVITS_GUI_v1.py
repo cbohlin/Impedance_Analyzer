@@ -33,7 +33,7 @@ if __name__ == '__main__':
     def __measure(client):
         console_message('----')
         console_message('Starting Measure')
-        client.start()
+        client.measure()
         console_message('Measure Complete')
     
     def connect_impedance_analyzer(client):

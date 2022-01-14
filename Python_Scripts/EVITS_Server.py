@@ -58,6 +58,14 @@ class RequestHandler(socketserver.BaseRequestHandler):
             elif message == b'STRT':
                 print('Starting!')
                 
+            elif message == b'MEAS':
+                parent_conn.send('MEAS')
+                msg = parent_conn.recv()
+                if msg == 'DONE':
+                    print(msg)
+                    t2 = time.perf_counter()
+                    print(f' -- {t2-t1} s -- Send/Recv')
+                          
             elif message == b'DISC':
                 break
             else:
@@ -266,19 +274,22 @@ if __name__ == '__main__':
         P_sweep = multiprocessing.Process(target=sweeping_process, args=(child_conn,))
         P_sweep.start()
         
-        t1 = time.perf_counter()
+        
         time.sleep(4)
+        t1 = time.perf_counter()
         while True:
-            #print(time.perf_counter() - t1)
-            t1 = time.perf_counter()
-            parent_conn.send('MEAS')
-            while True:
-                msg = parent_conn.recv()
-                if msg == 'DONE':
-                    print(msg)
-                    t2 = time.perf_counter()
-                    print(f' -- {t2-t1} s -- Send/Recv')
-                    break
+            pass
+            # time.sleep(1)
+            # print(time.perf_counter() - t1)
+            # t1 = time.perf_counter()
+            # parent_conn.send('MEAS')
+            # print('waiting')
+            # msg = parent_conn.recv()
+            # if msg == 'DONE':
+            #     print(msg)
+            #     t2 = time.perf_counter()
+            #     print(f' -- {t2-t1} s -- Send/Recv')
+
             
 
     except KeyboardInterrupt: 

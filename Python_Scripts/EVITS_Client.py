@@ -48,8 +48,8 @@ class Client:
         self._socket = socket.create_connection(self._server_address,timeout=(3))
         print('Connected to {} port {}'.format(*self._server_address))
         
-    def start(self):
-        self._send('STRT', None)
+    def measure(self):
+        self._send('MEAS', None)
         
     def cleanup(self):
         self._send('DISC', None)
