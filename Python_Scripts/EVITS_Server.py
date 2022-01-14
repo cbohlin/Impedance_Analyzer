@@ -53,13 +53,12 @@ class RequestHandler(socketserver.BaseRequestHandler):
         while True:
             message, data = self._recv()
             if message is None:
-                time.sleep(1/100)
+                time.sleep(1/1000)
                 continue
             elif message == b'STRT':
                 print('Starting!')
                 
             elif message == b'MEAS':
-                
                 t1 = time.perf_counter()
                 parent_conn.send('MEAS')
                 msg = parent_conn.recv()
@@ -68,7 +67,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
                     t2 = time.perf_counter()
                     print(f' -- {t2-t1} s -- Send/Recv')
                 
-                self._send('DONE')
+                self._send_pickle('DONE')
                 
             elif message == b'DISC':
                 break
@@ -283,7 +282,6 @@ if __name__ == '__main__':
         t1 = time.perf_counter()
         while True:
             pass
-            # time.sleep(1)
             # print(time.perf_counter() - t1)
             # t1 = time.perf_counter()
             # parent_conn.send('MEAS')

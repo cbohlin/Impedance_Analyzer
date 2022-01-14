@@ -31,10 +31,17 @@ if __name__ == '__main__':
     consoleList = ['------------------------','Welcome to the EVITS','------------------------','']
      
     def __measure(client):
-        console_message('----')
-        console_message('Starting Measure')
-        client.measure()
-        console_message('Measure Complete')
+        while True:
+            t1 = time.perf_counter()
+            measureButton.config(state='disabled')
+            console_message('----')
+            console_message('Starting Measure')
+            client.measure()
+            
+            measureButton.config(state='!disabled')
+            T = round(time.perf_counter() - t1,3)
+            console_message(f'{T} s')
+            
     
     def connect_impedance_analyzer(client):
         # I = e4990a_Impedance_Analyzer(ipEntry.get())
@@ -63,7 +70,7 @@ if __name__ == '__main__':
     def console_message(msg):
         consoleList.append(f'{msg}')
         consoleVar.set(value=consoleList)
-        consolePanel.update_idletasks()
+        #consolePanel.update_idletasks()
         consolePanel.update()
         
         
