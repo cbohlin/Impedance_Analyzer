@@ -59,6 +59,8 @@ class RequestHandler(socketserver.BaseRequestHandler):
                 print('Starting!')
                 
             elif message == b'MEAS':
+                
+                t1 = time.perf_counter()
                 parent_conn.send('MEAS')
                 msg = parent_conn.recv()
                 if msg == 'DONE':
