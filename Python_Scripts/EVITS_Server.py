@@ -68,7 +68,7 @@ class RequestHandler(socketserver.BaseRequestHandler):
                     t2 = time.perf_counter()
                     print(f' -- {t2-t1} s -- Send/Recv')
                 
-                self._send(None, 'DONE')
+                self._send('DONE')
                 
             elif message == b'DISC':
                 break
