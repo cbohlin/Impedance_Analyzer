@@ -50,6 +50,7 @@ class Client:
         
     def measure(self):
         self._send('MEAS', None)
+        self._recv()
         
     def cleanup(self):
         self._send('DISC', None)
@@ -66,5 +67,25 @@ class Client:
         if pickled is not None:
             self._socket.sendall(pickled)
             
+    def _recv(self, bbuf=None):
+        header = self._socket.recv(self.HEADER_SIZE)
+        message, rcvsize = struct.unpack(self.HEADER_FORMAT, header)
+        if message in (b'PCKL', b'BYTE'):
+            barray = bytearray(rcvsize)
+            idx = [0, 0]
+            while idx[0] < rcvsize:
+                recv_buf_len = \
+                    self._socket.recv_into(self._recv_buf, self.BUFSIZE)
+                idx[1] += recv_buf_len
+                if idx[1] > rcvsize:
+                    raise Exception("Unexpected receive data size")
+                barray[idx[0]:idx[1]] = self._recv_buf[:recv_buf_len]
+                idx[0] = idx[1]
+        else:
+            print("Unknown messsage: {}".format(message))
+        if message == b'PCKL':
+            return pickle.loads(barray)
+        elif message == b'BYTE':
+            return np.frombuffer(barray, dtype=np.int16)      
 # if __name__ == '__main__':
 #     main()

@@ -13,7 +13,7 @@ import tkinter.ttk as ttk
 
 from EVITS_Client import Client
 
-IP_DEFAULT = "192.168.0.3"
+IP_DEFAULT = "10.1.10.62"
 C = Client(IP_DEFAULT)
 
 def disconnect_GUI(client):
@@ -63,8 +63,8 @@ if __name__ == '__main__':
     def console_message(msg):
         consoleList.append(f'{msg}')
         consoleVar.set(value=consoleList)
-        root.update_idletasks()
-        root.update()
+        consolePanel.update_idletasks()
+        consolePanel.update()
         
         
     def __valid_ip(ip):
