@@ -18,6 +18,7 @@ import time
 import traceback
 import multiprocessing
 import functools
+import signal
 
 import numpy as np
 import pyvisa
@@ -181,8 +182,10 @@ def sweeping_process(child_conn):
         msg = child_conn.recv()
         
         print(msg)
+        if msg == 'STOP':
+            break
         
-        if msg == 'MEAS':
+        elif msg == 'MEAS':
             inst.write(':DISP:ENAB OFF')
             inst.write(':SENS1:DC:MEAS:ENAB ON')
         
@@ -208,7 +211,6 @@ def sweeping_process(child_conn):
         
         
             inst.write(':SENS1:DC:MEAS:CLE')
-        
         
         
         
@@ -251,21 +253,35 @@ def sweeping_process(child_conn):
     rm.close()
 
 
-
-    
-
-def main():
-    P_server = multiprocessing.Process(target=server_process)
-    P_server.start()
-    print('hi')
-    P_server.join()
-
+        
 if __name__ == '__main__':
+    def handler(signum, frame):
+        res = input("Ctrl-c was pressed. Do you really want to exit? y/n ")
+        if res == 'y':
+            parent_conn.send('STOP') 
+            time.sleep(1.5)
+            P_sweep.join()
+            P_server.join()
+            I.cleanup()
+            sys.exit(1)
+    
+    signal.signal(signal.SIGINT, handler)
+    
     try:
         #////////////////////////////////
         #// Setup Impedance Analyzer
         #////////////////////////////////
         I = e4990a_Impedance_Analyzer()
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         
         
         measure_Q = multiprocessing.Queue()
@@ -294,16 +310,19 @@ if __name__ == '__main__':
 
             
 
-    except KeyboardInterrupt: 
-        P_sweep.terminate()
-        P_sweep.join()
+    # except KeyboardInterrupt: 
+    #     parent_conn.send('STOP')
+
         
-        P_server.terminate()
-        P_server.join()
+    #     P_sweep.terminate()
+    #     P_sweep.join()
+        
+    #     P_server.terminate()
+    #     P_server.join()
         
         
-        I.cleanup()
-        sys.exit(0)
+    #     I.cleanup()
+    #     sys.exit(0)
     except Exception as e:
         P_sweep.terminate()
         P_sweep.join()

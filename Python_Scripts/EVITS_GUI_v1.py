@@ -15,6 +15,10 @@ from EVITS_Client import Client
 
 IP_DEFAULT = "10.1.10.62"
 C = Client(IP_DEFAULT)
+Looping = False
+
+
+
 
 def disconnect_GUI(client):
     try:
@@ -24,24 +28,44 @@ def disconnect_GUI(client):
 
 
 if __name__ == '__main__':
-
     controlPanelState = 'disabled'
     connectPanelState = 'normal'
     connectingVal = 0
-    consoleList = ['------------------------','Welcome to the EVITS','------------------------','']
+    consoleList = ['----------------------------------------',
+                   'Welcome to the EVITS',
+                   '----------------------------------------','']
      
-    def __measure(client):
-        while True:
-            t1 = time.perf_counter()
-            measureButton.config(state='disabled')
-            console_message('----')
-            console_message('Starting Measure')
-            client.measure()
-            
-            measureButton.config(state='!disabled')
-            T = round(time.perf_counter() - t1,3)
-            console_message(f'{T} s')
-            
+    def measure(client):
+        t1 = time.perf_counter()
+        measureButton.config(state='disabled')
+        console_message('----')
+        console_message('Starting Measure')
+        client.measure()
+        
+        measureButton.config(state='!disabled')
+        T = round(time.perf_counter() - t1,3)
+        console_message(f'{T} s')
+    
+    def loop(client):
+        global Looping
+        if not Looping:
+            Looping = True
+            loopButton.config(text = "Stop")
+            while Looping:
+                if not Looping:
+                    break
+                t1 = time.perf_counter()
+                measureButton.config(state='disabled')
+                console_message('----')
+                console_message('Starting Measure')
+                client.measure()
+                
+                measureButton.config(state='!disabled')
+                T = round(time.perf_counter() - t1,3)
+                console_message(f'{T} s')
+        elif Looping:
+            Looping = False
+            loopButton.config(text = "Loop")
     
     def connect_impedance_analyzer(client):
         # I = e4990a_Impedance_Analyzer(ipEntry.get())
@@ -61,6 +85,7 @@ if __name__ == '__main__':
             ipEntry.config(state='readonly')
             
             measureButton.config(state=controlPanelState)
+            loopButton.config(state=controlPanelState)
             
             console_message(f'Connected to EVITS on: {ipEntry.get()}')
         except:
@@ -71,7 +96,11 @@ if __name__ == '__main__':
         consoleList.append(f'{msg}')
         consoleVar.set(value=consoleList)
         #consolePanel.update_idletasks()
+        consoleReadout.yview_moveto(1)
         consolePanel.update()
+        # consoleReadout.yview_scroll (1,tk.UNITS)
+        
+        
         
         
     def __valid_ip(ip):
@@ -128,11 +157,15 @@ if __name__ == '__main__':
     # Control Panel
     #==============================================================================
     
+    
     controlPanel = ttk.LabelFrame(root,text='Controls')
     controlPanel.grid(row=1,column=1,rowspan=2,sticky=tk.NW,padx=5)
     
-    measureButton = ttk.Button(controlPanel, text="Measure", command=lambda:__measure(C),state=controlPanelState)
-    measureButton.grid(row=0,column=0,sticky=tk.W,padx=5)
+    measureButton = ttk.Button(controlPanel, text="Measure", command=lambda:measure(C),state=controlPanelState)
+    measureButton.grid(row=0,column=0,sticky=tk.W,padx=5,pady=5)
+    
+    loopButton = ttk.Button(controlPanel, text="Loop", command=lambda:loop(C),state=controlPanelState)
+    loopButton.grid(row=2,column=0,sticky=tk.W,padx=5,pady=5)
     
     
     controlSpacer = ttk.Label(controlPanel,text="",font=('Helvetica', '10'),anchor=tk.W,width=75)
