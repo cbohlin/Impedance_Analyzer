@@ -19,6 +19,7 @@ import traceback
 import multiprocessing
 import functools
 import signal
+import keyboard
 
 import numpy as np
 import pyvisa
@@ -134,138 +135,138 @@ class TCPServer(socketserver.TCPServer):
         
         
         super().__init__(host_port_tuple, streamhandler)
-        print("Starting EVITS on {} port {}".format(*host_port_tuple))
-        print("Waiting for connection...")
+        print("---- Starting EVITS on {} port {}".format(*host_port_tuple))
+        print("---- Waiting for connection...")
 
 
 
 def server_process():
-    server = TCPServer(get_server_address(), RequestHandler)
-    server.serve_forever()
+    try:
+        server = TCPServer(get_server_address(), RequestHandler)
+        server.serve_forever()
+    except KeyboardInterrupt:
+        server.shutdown()
 
 def analysis_process():
     pass
 
-def sweeping_process(child_conn):
-    time.sleep(2)
+def sweeping_process(child_conn, I):
+    
+    ip_address = I.ip
+    number_of_points = I.number_of_points
+    number_of_segments = I.number_of_segments
+    
+    
     # Open PYVISA to Impedance Analyzer
     rm = pyvisa.ResourceManager()
 
-    ip_address = '10.1.10.103'
-
+    
     resource_name = f'TCPIP::{ip_address}::INSTR'
-
-
     inst = rm.open_resource(resource_name)
 
     # Timeout must be longer than sweep interval.
     inst.timeout = 30000000
 
-
     idn = inst.query('*IDN?').strip()
     opt = inst.query('*OPT?').strip()
-
-
     inst.write('*CLS')
     
-    ## Get X/Freq Data
-    query = functools.partial(inst.query_ascii_values, separator=',',
-                              container=np.array)
-
-    x = query(':SENS1:FREQ:DATA?')    
 
     # Stop display from updating to speed up measure
     #:DISPlay:ENABle {ON|OFF|1|0}
     inst.write(':DISP:ENAB OFF')
     
+    # setup Query
+    query = functools.partial(inst.query_ascii_values, separator=',',
+                              container=np.array)
+    
+    number_of_intervals = 1
+    bias_current_measurement = np.zeros((1, number_of_intervals),
+                                           dtype=np.float32)
+    bias_voltage_measurement = np.zeros((1, number_of_intervals),
+                                           dtype=np.float32)
+    
+    # Show marker at peak of trace
+    inst.write(':CALC1:MARK1 ON')
+    inst.write(':CALC1:MARK1:FUNC:TYPE PEAK')
+
+    
+    
     while True:
-        msg = child_conn.recv()
-        
-        print(msg)
-        if msg == 'STOP':
+        try:
+            msg = child_conn.recv()
+            
+            print(msg)
+            if msg == 'STOP':
+                print('Stoping!')
+                break
+            
+            elif msg == 'MEAS':
+                ST = time.perf_counter()
+                # Data Containers
+                # ydims = number_of_points, number_of_intervals
+                # yx = np.zeros(ydims, dtype=np.float32)
+                # yr = np.zeros(ydims, dtype=np.float32)
+                
+                inst.write(':DISP:ENAB OFF')
+                inst.write(':SENS1:DC:MEAS:ENAB ON')
+            
+                
+                inst.write(':SOUR:BIAS:STAT ON')
+    
+                inst.write(':SENS1:DC:MEAS:CLE')
+            
+                acq_start_time = time.perf_counter()
+                inst.write(':TRIG:SING')
+                inst.query('*OPC?')
+                acq_end_time = (time.perf_counter() - acq_start_time) * 1e3
+            
+                MSPP = acq_end_time/number_of_points
+            
+                print(f"Acquisition time is {acq_end_time:.0f} ms")
+                print(f"For: {number_of_points:.0f} points")
+                print(f"That is: {MSPP:.2f} ms/point")
+            
+            
+                inst.write(':DISP:WIND1:TRAC1:Y:AUTO')
+                inst.write(':DISP:WIND1:TRAC2:Y:AUTO')
+            
+                # Execute marker search
+                inst.write(':CALC1:MARK1:FUNC:EXEC')
+                inst.write(':SOUR:BIAS:STAT OFF')
+            
+            
+                y = query(':CALC1:DATA:RDAT?')
+                # yr[:,0] = y[::2]
+                # yx[:,0] = y[1::2]
+    
+                # R = yr
+                # X = yx
+            
+                ET = time.perf_counter()
+                inst.write(':DISP:ENAB ON')
+                print(f"Total Time With Overhead: {(ET-ST):.2f} s")
+                
+                child_conn.send('DONE')
+        except KeyboardInterrupt:
             break
-        
-        elif msg == 'MEAS':
-            inst.write(':DISP:ENAB OFF')
-            inst.write(':SENS1:DC:MEAS:ENAB ON')
-        
-            ST = time.perf_counter()
-            inst.write(':SOUR:BIAS:STAT ON')
-        
-            number_of_intervals = 1
-            bias_current_measurement = np.zeros((1, number_of_intervals),
-                                                   dtype=np.float32)
-            bias_voltage_measurement = np.zeros((1, number_of_intervals),
-                                                   dtype=np.float32)
-            number_of_points = 101
-            numer_of_intervals = 1
-            # Show marker at peak of trace
-            # inst.write(':CALC1:MARK1 ON')
-            # inst.write(':CALC1:MARK1:FUNC:TYPE PEAK')
-        
-            # Data Containers
-            ydims = number_of_points, number_of_intervals
-            yx = np.zeros(ydims, dtype=np.float32)
-            yr = np.zeros(ydims, dtype=np.float32)
-             
-        
-        
-            inst.write(':SENS1:DC:MEAS:CLE')
-        
-        
-        
-            acq_start_time = time.perf_counter()
-            inst.write(':TRIG:SING')
-            inst.query('*OPC?')
-            acq_end_time = (time.perf_counter() - acq_start_time) * 1e3
-        
-            MSPP = acq_end_time/number_of_points
-        
-            print(f"Acquisition time is {acq_end_time:.0f} ms")
-            print(f"For: {number_of_points:.0f} points")
-            print(f"That is: {MSPP:.2f} ms/point")
-        
-        
-            inst.write(':DISP:WIND1:TRAC1:Y:AUTO')
-            inst.write(':DISP:WIND1:TRAC2:Y:AUTO')
-        
-            # Execute marker search
-            inst.write(':CALC1:MARK1:FUNC:EXEC')
-            inst.write(':SOUR:BIAS:STAT OFF')
-        
-        
-            y = query(':CALC1:DATA:RDAT?')
-            yr[:,0] = y[::2]
-            yx[:,0] = y[1::2]
-        
-            F = x
-            R = yr
-            X = yx
-        
-            ET = time.perf_counter()
-            inst.write(':DISP:ENAB ON')
-            print(f"Total Time With Overhead: {(ET-ST):.2f} s")
-            
-            child_conn.send('DONE')
             
 
-    inst.close()
-    rm.close()
+    
 
+
+
+        
 
         
 if __name__ == '__main__':
-    def handler(signum, frame):
-        res = input("Ctrl-c was pressed. Do you really want to exit? y/n ")
-        if res == 'y':
-            parent_conn.send('STOP') 
-            time.sleep(1.5)
-            P_sweep.join()
-            P_server.join()
-            I.cleanup()
-            sys.exit(1)
+    print()
+    print('////////////////////////////////')
+    print('///   EVITS Server')
+    print('////////////////////////////////')
+    print()
     
-    signal.signal(signal.SIGINT, handler)
+    
     
     try:
         #////////////////////////////////
@@ -276,53 +277,32 @@ if __name__ == '__main__':
         
         
         
-        
-        
-        
-        
-        
-        
-        
-        
         measure_Q = multiprocessing.Queue()
         parent_conn, child_conn = multiprocessing.Pipe()
         
         P_server = multiprocessing.Process(target=server_process)
         P_server.start()
         
-        P_sweep = multiprocessing.Process(target=sweeping_process, args=(child_conn,))
+        P_sweep = multiprocessing.Process(target=sweeping_process, args=(child_conn,I))
         P_sweep.start()
         
         
-        time.sleep(4)
-        t1 = time.perf_counter()
+        time.sleep(1)
+        
+        
         while True:
-            pass
-            # print(time.perf_counter() - t1)
-            # t1 = time.perf_counter()
-            # parent_conn.send('MEAS')
-            # print('waiting')
-            # msg = parent_conn.recv()
-            # if msg == 'DONE':
-            #     print(msg)
-            #     t2 = time.perf_counter()
-            #     print(f' -- {t2-t1} s -- Send/Recv')
+            try:
+                pass
+            except KeyboardInterrupt:
+                P_sweep.join()
+                P_server.join()
+                break
+        
+          
 
-            
-
-    # except KeyboardInterrupt: 
-    #     parent_conn.send('STOP')
-
-        
-    #     P_sweep.terminate()
-    #     P_sweep.join()
-        
-    #     P_server.terminate()
-    #     P_server.join()
-        
-        
-    #     I.cleanup()
-    #     sys.exit(0)
+    except KeyboardInterrupt:
+        I.cleanup()
+        sys.exit(0)
     except Exception as e:
         P_sweep.terminate()
         P_sweep.join()
