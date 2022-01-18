@@ -164,12 +164,18 @@ if __name__ == '__main__':
     measureButton = ttk.Button(controlPanel, text="Measure", command=lambda:measure(C),state=controlPanelState)
     measureButton.grid(row=0,column=0,sticky=tk.W,padx=5,pady=5)
     
+    measureHelp = ttk.Label(controlPanel, text="Takes a single measurement")
+    measureHelp.grid(row=0,column=1,sticky=tk.W,padx=5,pady=5)
+    
     loopButton = ttk.Button(controlPanel, text="Loop", command=lambda:loop(C),state=controlPanelState)
-    loopButton.grid(row=2,column=0,sticky=tk.W,padx=5,pady=5)
+    loopButton.grid(row=1,column=0,sticky=tk.W,padx=5,pady=5)
+    
+    loopHelp = ttk.Label(controlPanel, text="Continuously takes measurements. Press again to stop.")
+    loopHelp.grid(row=1,column=1,sticky=tk.W,padx=5,pady=5)
     
     
-    controlSpacer = ttk.Label(controlPanel,text="",font=('Helvetica', '10'),anchor=tk.W,width=75)
-    controlSpacer.grid(row=3,column=0)
+    # controlSpacer = ttk.Label(controlPanel,text="",font=('Helvetica', '10'),anchor=tk.W,width=75)
+    # controlSpacer.grid(row=3,column=0)
     
     
     #==============================================================================
@@ -181,7 +187,7 @@ if __name__ == '__main__':
 
     consoleVar = tk.StringVar(value=consoleList)
 
-    consoleReadout = tk.Listbox(consolePanel,height=25,width=50,listvariable=consoleVar)
+    consoleReadout = tk.Listbox(consolePanel,height=25,width=60,listvariable=consoleVar)
     consoleReadout.grid(row=0,column=0)
     
     consoleSpacer = ttk.Label(consolePanel,text="",font=('Helvetica', '10'),anchor=tk.W,width=75)
