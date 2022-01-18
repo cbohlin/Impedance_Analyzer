@@ -3,7 +3,7 @@
 """
 Created on Thu Jan  6 12:20:57 2022
 
-@author: otonexus
+@author: charlie bohlin
 """
 
 import time

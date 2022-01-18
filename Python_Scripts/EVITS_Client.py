@@ -2,32 +2,18 @@
 """
 Created on Mon Jan 10 09:15:52 2022
 
-@author: charlesbohlin
+@author: charlie bohlin
 
-Code skeleton from Ryan Ollos
+Client skeleton from Ryan Ollos
 """
 
-import argparse
-import array
-import cv2
-import logging
-import multiprocessing
+
 import pickle
 import socket
 import struct
-import sys
-import tempfile
-import time
 
 import numpy as np
 
-# def main():
-#     C = Client('192.168.0.3')
-#     C.connect()
-#     input('EVITS is up and running. Press [enter] to take a measurement.')
-#     input('EVITS is up and running. Press [enter] to take a measurement.')
-#     C.start()
-#     C.cleanup()
 
 class Client:
 
@@ -87,5 +73,3 @@ class Client:
             return pickle.loads(barray)
         elif message == b'BYTE':
             return np.frombuffer(barray, dtype=np.int16)      
-# if __name__ == '__main__':
-#     main()

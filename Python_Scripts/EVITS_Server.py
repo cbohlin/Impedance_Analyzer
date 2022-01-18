@@ -3,12 +3,12 @@
 """
 Created on Fri Jan  7 16:44:11 2022
 
-@author: charlesbohlin
+@author: charlie bohlin
 
-Code skeleton from Ryan Ollos
+Socketserver ode skeleton from Ryan Ollos
 """
 
-import argparse
+
 import pickle
 import socket
 import socketserver
@@ -18,8 +18,6 @@ import time
 import traceback
 import multiprocessing
 import functools
-import signal
-import keyboard
 
 import numpy as np
 import pyvisa
@@ -145,13 +143,10 @@ def server_process():
         server = TCPServer(get_server_address(), RequestHandler)
         server.serve_forever()
     except KeyboardInterrupt:
+        # gracefully handle ctrl-c quit
         server.shutdown()
 
-def analysis_process():
-    pass
-
 def sweeping_process(child_conn, I):
-    
     ip_address = I.ip
     number_of_points = I.number_of_points
     number_of_segments = I.number_of_segments
@@ -191,7 +186,7 @@ def sweeping_process(child_conn, I):
     inst.write(':CALC1:MARK1:FUNC:TYPE PEAK')
 
     
-    
+    # This loop waits for a sweep trigger
     while True:
         try:
             msg = child_conn.recv()
@@ -253,11 +248,6 @@ def sweeping_process(child_conn, I):
             
 
     
-
-
-
-        
-
         
 if __name__ == '__main__':
     print()
@@ -275,32 +265,38 @@ if __name__ == '__main__':
         I = e4990a_Impedance_Analyzer()
         
         
-        
-        
+        # FIFO
         measure_Q = multiprocessing.Queue()
+        
+        # Communication between socket and measure process
         parent_conn, child_conn = multiprocessing.Pipe()
         
+        # Socket Process
         P_server = multiprocessing.Process(target=server_process)
         P_server.start()
         
+        # Measure/Sweep process
         P_sweep = multiprocessing.Process(target=sweeping_process, args=(child_conn,I))
         P_sweep.start()
         
         
-        time.sleep(1)
         
-        
+        # Main process stuff will be herer
         while True:
             try:
                 pass
+                # Main process stuff goes here
+                
             except KeyboardInterrupt:
+                # gracefully handle ctrl-c quit
                 P_sweep.join()
                 P_server.join()
                 break
         
           
-
+        
     except KeyboardInterrupt:
+        # gracefully handle ctrl-c quit
         I.cleanup()
         sys.exit(0)
     except Exception as e:
