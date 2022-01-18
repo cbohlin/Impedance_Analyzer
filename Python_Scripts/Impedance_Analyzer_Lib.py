@@ -2,7 +2,7 @@
 """
 Created on Thu Jan  6 12:36:09 2022
 
-@author: otonexus
+@author: charlie bohlin
 """
 
 import pyvisa
