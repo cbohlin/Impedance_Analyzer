@@ -45,11 +45,13 @@ class e4990a_Impedance_Analyzer:
             
             self.inst = inst 
         except:
-            #raise E4990AError('No device found')
             self.__printErr('Could not connect. Check that the IP address is correct and try restarting the impedance analyzer.')
+            raise E4990AError('No device found')
+            #self.__printErr('Could not connect. Check that the IP address is correct and try restarting the impedance analyzer.')
+        else:
+            self.configure_e4990a()
     
-    
-        self.configure_e4990a()
+        
         print('---- e4990a Setup')
         
     def read_config(self,filename):

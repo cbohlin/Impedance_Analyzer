@@ -46,7 +46,7 @@ def get_server_address():
 class RequestHandler(socketserver.BaseRequestHandler):
 
     def setup(self):
-        pass
+        self.FIFO = self.server.FIFO
 
     def handle(self):
         print("Connection from {} port {}".format(*self.client_address))
@@ -66,8 +66,16 @@ class RequestHandler(socketserver.BaseRequestHandler):
                     print(msg)
                     t2 = time.perf_counter()
                     print(f' -- {t2-t1} s -- Send/Recv')
-                
-                self._send_pickle('DONE')
+                    
+                    R = self.FIFO.get()
+                    X = self.FIFO.get()
+                    Freq = self.FIFO.get()
+                    
+
+                    Sweep_Data = {'R':R,'X':X,'Freq':Freq}
+                    
+                    
+                self._send_pickle(Sweep_Data)
                 
             elif message == b'DISC':
                 break
@@ -129,24 +137,24 @@ class RequestHandler(socketserver.BaseRequestHandler):
 
 class TCPServer(socketserver.TCPServer):
 
-    def __init__(self, host_port_tuple, streamhandler):
+    def __init__(self, host_port_tuple, streamhandler, FIFO):
         
-        
+        self.FIFO = FIFO
         super().__init__(host_port_tuple, streamhandler)
         print("---- Starting EVITS on {} port {}".format(*host_port_tuple))
         print("---- Waiting for connection...")
 
 
 
-def server_process():
+def server_process(FIFO):
     try:
-        server = TCPServer(get_server_address(), RequestHandler)
+        server = TCPServer(get_server_address(), RequestHandler,FIFO)
         server.serve_forever()
     except KeyboardInterrupt:
         # gracefully handle ctrl-c quit
         server.shutdown()
 
-def sweeping_process(child_conn, I):
+def sweeping_process(child_conn, I, measure_Q):
     ip_address = I.ip
     number_of_points = I.number_of_points
     number_of_segments = I.number_of_segments
@@ -181,6 +189,8 @@ def sweeping_process(child_conn, I):
     bias_voltage_measurement = np.zeros((1, number_of_intervals),
                                            dtype=np.float32)
     
+    Freq = query(':SENS1:FREQ:DATA?')   
+    
     # Show marker at peak of trace
     inst.write(':CALC1:MARK1 ON')
     inst.write(':CALC1:MARK1:FUNC:TYPE PEAK')
@@ -199,9 +209,9 @@ def sweeping_process(child_conn, I):
             elif msg == 'MEAS':
                 ST = time.perf_counter()
                 # Data Containers
-                # ydims = number_of_points, number_of_intervals
-                # yx = np.zeros(ydims, dtype=np.float32)
-                # yr = np.zeros(ydims, dtype=np.float32)
+                ydims = number_of_points, number_of_intervals
+                yx = np.zeros(ydims, dtype=np.float32)
+                yr = np.zeros(ydims, dtype=np.float32)
                 
                 inst.write(':DISP:ENAB OFF')
                 inst.write(':SENS1:DC:MEAS:ENAB ON')
@@ -232,17 +242,23 @@ def sweeping_process(child_conn, I):
             
             
                 y = query(':CALC1:DATA:RDAT?')
-                # yr[:,0] = y[::2]
-                # yx[:,0] = y[1::2]
+                yr[:,0] = y[::2]
+                yx[:,0] = y[1::2]
     
-                # R = yr
-                # X = yx
+                R = yr
+                X = yx
             
-                ET = time.perf_counter()
+                
                 inst.write(':DISP:ENAB ON')
-                print(f"Total Time With Overhead: {(ET-ST):.2f} s")
+                
+                measure_Q.put(R)
+                measure_Q.put(X)
+                measure_Q.put(Freq)
                 
                 child_conn.send('DONE')
+                ET = time.perf_counter()
+                print(f"Total Time With Overhead: {(ET-ST):.2f} s")
+                
         except KeyboardInterrupt:
             break
             
@@ -256,13 +272,17 @@ if __name__ == '__main__':
     print('////////////////////////////////')
     print()
     
-    
-    
     try:
         #////////////////////////////////
         #// Setup Impedance Analyzer
         #////////////////////////////////
         I = e4990a_Impedance_Analyzer()
+    except:
+
+        #print('Could not connect. Check that the IP address is correct and try restarting the impedance analyzer.')
+        sys.exit(0)     
+    try:
+        
         
         
         # FIFO
@@ -272,11 +292,11 @@ if __name__ == '__main__':
         parent_conn, child_conn = multiprocessing.Pipe()
         
         # Socket Process
-        P_server = multiprocessing.Process(target=server_process)
+        P_server = multiprocessing.Process(target=server_process, args=(measure_Q,))
         P_server.start()
         
         # Measure/Sweep process
-        P_sweep = multiprocessing.Process(target=sweeping_process, args=(child_conn,I))
+        P_sweep = multiprocessing.Process(target=sweeping_process, args=(child_conn,I,measure_Q))
         P_sweep.start()
         
         

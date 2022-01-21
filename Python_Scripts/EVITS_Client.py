@@ -36,7 +36,9 @@ class Client:
         
     def measure(self):
         self._send('MEAS', None)
-        self._recv()
+        Sweep_Data = self._recv()
+        
+        return Sweep_Data
         
     def cleanup(self):
         self._send('DISC', None)

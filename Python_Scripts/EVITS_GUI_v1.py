@@ -7,17 +7,64 @@ Created on Thu Jan  6 12:20:57 2022
 """
 
 import time
+import numpy as np
 
 import tkinter as tk
 import tkinter.ttk as ttk
 
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+
 from EVITS_Client import Client
+
+
 
 IP_DEFAULT = "10.1.10.62"
 C = Client(IP_DEFAULT)
 Looping = False
 
 
+def e4990a_plot(Filename, F, R, X, Low1, High1, Low2, High2):
+    Peak = np.argmax(R);
+
+    # fig, ax1 = plt.subplots()
+    fig = plt.Figure(figsize=(8,6.5),dpi=100)
+    fig.patch.set_facecolor((0.2,0.2,0.2))
+    # plt.grid(color=(0.4,0.4,0.4,0.1))
+    
+    ax1 = fig.add_subplot(111)
+
+    ax1.plot(F/(1e6),R,color=(1, 1, 0))
+    ax1.plot(F[Peak]/(1e6),R[Peak]+R[Peak]/10,'vy',markersize=15)
+    ax1.set_title(Filename,fontsize=20,color=(1, 1, 1),fontweight='bold')
+    ax1.set_xlabel('Frequency (MHz)',fontsize=24,color=(1, 1, 1))
+    ax1.set_ylabel('Resistance ($\Omega$)',fontsize=24,color=(1, 1, 0))
+    ax1.set_ylim((Low1,High1))
+    ax1.set_xlim((np.min(F)/(1e6),np.max(F)/(1e6)))
+
+
+
+    ax2 = ax1.twinx()
+    ax2.plot(F/(1e6),X,color=(0, 1, 1))
+    ax2.set_ylabel('Reactance ($\Omega$)',fontsize=24,color=(0, 1, 1))
+
+
+    ax1.set_facecolor((0.2,0.2,0.2))
+    ax1.spines['bottom'].set_color('w')
+    ax1.tick_params(axis='x', colors='w')
+    ax1.tick_params(axis='y', colors='w')
+    ax2.tick_params(axis='y', colors='w')
+    ax2.set_ylim((Low2,High2))
+
+
+    ax2.text(.04,0.92,f'F = {F[Peak]/(1e6)} MHz',transform=ax2.transAxes,color='y',fontsize=16,fontweight='bold')
+    # ax2.text(.04,0.87,f'Acquisition Time = 346 ms',transform=ax2.transAxes,color='g',fontsize=16,fontweight='bold')
+
+    fig.tight_layout()
+    # fig = plt.gcf()
+    #fig.set_size_inches(10, 7)
+    
+    return fig
 
 
 def disconnect_GUI(client):
@@ -34,17 +81,42 @@ if __name__ == '__main__':
     consoleList = ['----------------------------------------',
                    'Welcome to the EVITS',
                    '----------------------------------------','']
+    
+    def on_closing():
+        disconnect_GUI(C)
+        root.destroy()
      
     def measure(client):
         t1 = time.perf_counter()
         measureButton.config(state='disabled')
         console_message('----')
         console_message('Starting Measure')
-        client.measure()
+        Sweep_Data = client.measure()
+        
+        
+        
+        
+        f = e4990a_plot(titleEntry.get(), Sweep_Data['Freq'], Sweep_Data['R'], Sweep_Data['X'], -500, 2500, -40000, 1000)
+        global plotCanvas
+        global plotToolbar
+        plotCanvas.get_tk_widget().pack_forget()
+        
+        
+        plotCanvas = FigureCanvasTkAgg(f,plotPanel)
+        plotCanvas.get_tk_widget().pack(padx=10)
+        
+        plotToolbar.pack_forget()
+        plotToolbar = NavigationToolbar2Tk(plotCanvas, plotPanel)
+        plotToolbar.update()
+        
+
         
         measureButton.config(state='!disabled')
         T = round(time.perf_counter() - t1,3)
-        console_message(f'{T} s')
+        # console_message(f'{T} s')
+        console_message('Measure Complete')
+        
+        
     
     def loop(client):
         global Looping
@@ -118,7 +190,7 @@ if __name__ == '__main__':
     
     root = tk.Tk()
     root.title('EVITS v1')
-    root.geometry('1400x800+100+50')
+    root.geometry('1500x950+100+50')
     
     headerFrame = ttk.LabelFrame(root)
     headerFrame.grid(row=0,column=0,sticky=tk.NW,padx=5)
@@ -157,9 +229,8 @@ if __name__ == '__main__':
     # Control Panel
     #==============================================================================
     
-    
     controlPanel = ttk.LabelFrame(root,text='Controls')
-    controlPanel.grid(row=1,column=1,rowspan=2,sticky=tk.NW,padx=5)
+    controlPanel.grid(row=0,column=1,rowspan=2,sticky=tk.NW,padx=5)
     
     measureButton = ttk.Button(controlPanel, text="Measure", command=lambda:measure(C),state=controlPanelState)
     measureButton.grid(row=0,column=0,sticky=tk.W,padx=5,pady=5)
@@ -174,7 +245,7 @@ if __name__ == '__main__':
     loopHelp.grid(row=1,column=1,sticky=tk.W,padx=5,pady=5)
     
     
-    # controlSpacer = ttk.Label(controlPanel,text="",font=('Helvetica', '10'),anchor=tk.W,width=75)
+    # controlSpacer = ttk.Label(controlPanel,text="",font=('Helvetica', '10'),anchor=tk.W,width=55)
     # controlSpacer.grid(row=3,column=0)
     
     
@@ -187,16 +258,46 @@ if __name__ == '__main__':
 
     consoleVar = tk.StringVar(value=consoleList)
 
-    consoleReadout = tk.Listbox(consolePanel,height=25,width=60,listvariable=consoleVar)
+    consoleReadout = tk.Listbox(consolePanel,height=40,width=60,listvariable=consoleVar)
     consoleReadout.grid(row=0,column=0)
     
     consoleSpacer = ttk.Label(consolePanel,text="",font=('Helvetica', '10'),anchor=tk.W,width=75)
     consoleSpacer.grid(row=1,column=0)
     
     
-    def on_closing():
-        disconnect_GUI(C)
-        root.destroy()
+    #==============================================================================
+    # Plot Panel
+    #==============================================================================
+    plotPanel = ttk.LabelFrame(root,text='Impedance Plot')
+    plotPanel.grid(row=2,column=1,rowspan=2,sticky=tk.NW,padx=5)
+    
+    # plotButton = ttk.Button(plotPanel, text="Plot",state=connectPanelState)
+    # plotButton.grid(row=0,column=0,sticky=tk.W,padx=5,pady=5)
+    titleEntry = ttk.Entry(plotPanel,width = 50)
+    titleEntry.pack(pady = 5)
+    
+    # plotButton.pack()
+    
+    # f = plt.Figure(figsize=(3,2),dpi=250)
+    # sub_plot_1 = f.add_subplot(111)
+    # sub_plot_1.plot([1,2,3,4,5,6],[1,5,2,3,4,5])
+    
+    
+    f = e4990a_plot('', np.array([500000,5000000]), np.array([0,0]), np.array([0,0]), -500, 2500, -40000, 1000)
+    
+   
+    plotCanvas = FigureCanvasTkAgg(f,plotPanel)
+    plotCanvas.get_tk_widget().pack(padx=10)
+    
+    plotToolbar = NavigationToolbar2Tk(plotCanvas, plotPanel)
+    plotToolbar.update()
+    # plotCanvas.get_tk_widget().grid(row=1,column=0,sticky=tk.W,padx=5,pady=5)
+    
+    plotSpacer = ttk.Label(plotPanel,text="",font=('Helvetica', '10'),anchor=tk.W,width=108)
+    plotSpacer.pack()
+    
+    
+    
 
     root.protocol("WM_DELETE_WINDOW", on_closing)
     root.mainloop()

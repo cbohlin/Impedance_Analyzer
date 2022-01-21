@@ -51,6 +51,8 @@ def e4990a_plot(Filename, F, R, X, Low1, High1, Low2, High2):
 
 
     ax2.text(.04,0.92,f'F = {F[Peak]/(1e6)} MHz',transform=ax2.transAxes,color='y',fontsize=26,fontweight='bold')
+    ax2.text(.04,0.87,f'Acquisition Time = 346 ms',transform=ax2.transAxes,color='g',fontsize=26,fontweight='bold')
+
 
     fig = plt.gcf()
     fig.set_size_inches(14.5, 10.5)

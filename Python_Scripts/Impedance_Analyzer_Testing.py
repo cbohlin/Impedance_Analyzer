@@ -24,6 +24,8 @@ import numpy
 import pyvisa
 import scipy.io as scio
 
+from e4990a_plot_lib import e4990a_plot
+
 # Open PYVISA to Impedance Analyzer
 rm = pyvisa.ResourceManager()
 
@@ -152,6 +154,15 @@ rm.close()
 
 
 print(f"Total Time With Overhead: {(ET-ST):.2f} s")
+
+Filename = 'Speculum Mounted CMUT 83D1: Vector Impedance'
+Low1 = -250
+High1 = 3000
+
+Low2 = -40000
+High2 = 1000
+
+e4990a_plot(Filename, F, R, X, Low1, High1, Low2, High2)
 
 # arscio.savemat('54A3_Shorted_Spec.mat', {
 #     'F':F,
